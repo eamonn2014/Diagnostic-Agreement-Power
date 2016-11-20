@@ -1,0 +1,203 @@
+---
+title: "Diagnostic Agreement Power"
+author: "Eamonn"
+date: '`r format(Sys.time(), "%d %B, %Y")`'
+header-includes:
+- \usepackage{eso-pic,graphicx,transparent}
+- \usepackage{graphicx}
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \setlength\headheight{22pt}
+- \fancyfoot[RO]{Data Management}
+- \usepackage{lastpage}
+- \cfoot{Page \thepage\ of \pageref{LastPage}}
+output:
+  pdf_document:
+    fig_caption: yes
+    fig_height: 6
+    fig_width: 8
+    number_sections: no
+  html_document: default
+  word_document: default
+---
+ 
+ 
+\AddToShipoutPictureFG{
+  \AtPageCenter{% or \AtTextCenter
+    \makebox[0pt]{\rotatebox[origin=c]{45}{%
+      \scalebox{5}{\texttransparent{0.3}{  }}%
+    }}
+  }
+}
+ 
+ 
+ 
+```{r set-options, echo=FALSE, cache=FALSE, warning = FALSE}
+ 
+        rm(list=ls())
+ 
+        set.seed(123)
+        startTime<-proc.time()
+        library(knitr)
+        options(width=70)
+        opts_chunk$set(comment = "", warning = FALSE, message = FALSE,
+                       echo = FALSE, tidy = FALSE, size="tiny",  cache=FALSE,
+                       progress=TRUE,
+                       cache.path = 'program_Cache/',
+                       fig.path='figure/')
+         
+        knitr::knit_hooks$set(inline = function(x) {
+          knitr:::format_sci(x, 'md')
+        })
+         
+        
+```
+ 
+<!-- \begin{figure}[t!] -->
+<!--   \centering -->
+<!--     \includegraphics[keepaspectratio, width=0.2\textwidth]{LOGO.png} -->
+<!--   \label{fig:RSUencountered} -->
+<!-- \end{figure} -->
+ 
+ 
+ 
+ 
+```{r prerequisites, echo=FALSE}
+
+        where<-"home"
+        x  <- "Users\\User\\Documents\\GIT"
+        
+        path <- paste(x,"\\Diagnostic-Agreement-Power",sep="")
+        path2 <- paste(x,"\\DATA",sep="")
+        
+        work<-    paste("C:/", path, sep = "")
+        nonwork<- paste("C:/", path, sep = "")
+        if (where=="home") {wd<- nonwork} else {wd<-work}
+        
+        work2<-    paste("X:/", path2, sep = "")
+        nonwork2<- paste("~/X/", path2, sep = "")
+        if (where=="home") {wd2<- nonwork2} else {wd2<-work2}
+        
+        work3<-    paste("X:/FUNCTIONS/R", sep = "")
+        nonwork3<- paste("~/X/FUNCTIONS/R", sep = "")
+        if (where=="home") {wd3<- nonwork3} else {wd3<-work3}
+        
+        setwd(wd)
+        opts_knit$set(root.dir = wd)                  ##THIS SETS YOUR WORKING DIRECTORY
+        
+```
+```{r preliminaries perhaps , echo=FALSE, results='hide'}
+ 
+        p3 <- function(x) {formatC(x, format="f", digits=3)}
+        p4 <- function(x) {formatC(x, format="f", digits=4)}
+        p2 <- function(x) {formatC(x, format="f", digits=2)}
+        p1 <- function(x) {print(formatC(x, format="f", digits=1),quote=FALSE)}
+        
+        #perhaps help colour plot text based on loop count
+        is.even <- function(x){ x %% 2 == 0 }
+ 
+#### Load relevant packages
+list.of.packages <- c("MKmisc")
+ 
+        new.packages <- 
+                list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+        if(length(new.packages)) install.packages(new.packages)
+        
+        sapply(X = list.of.packages, require, character.only = TRUE)
+        
+```
+ 
+# Function to simulate diagnostic agreement power
+ 
+```{r reg expressions, echo=TRUE, results='markdown' }
+ 
+  # set up parameters
+      
+    prev. <- runif(1,0,.5) # if this is less than .5 power on positive agreement
+    sens. <- 0.95          # true sensitivity
+    target <- 0.85         # sens. - this is delta
+    
+    pow <- MKmisc::power.diagnostic.test(sens = sens., delta=sens.-target, 
+                                         power = 0.9, prev=prev., sig.level=.025,
+                                         method=  "asymptotic")
+
+      # feed in sample size estimate from canned function to simulation
+      agree.pow <- function(n=ceiling(pow$n + pow$n1), prev=prev., sens=sens., spec=0.95, 
+                          target1=target, target2=target, target3=target) {
+     
+      # prevalence of +ves
+      CTA <- rbinom(n, 1, prev) # CTA result
+      CDX <- as.numeric(n)
+      
+      # use the sensitivity and specificity relationship to generate CDX result
+      
+      for (i in 1:n) { 
+        CDX[i] <- ifelse(CTA[i]==0, rbinom(1,1,1-spec), rbinom(1,1,sens)) 
+      }
+      
+      tab <- table(CDX, CTA)[2:1, 2:1]                  # contingency table
+     
+      opa <- Hmisc::binconf(sum(CTA==CDX), n)           # overall percent agreement
+      ppa <- Hmisc::binconf(tab[1],  sum(tab[,1]))      # positive percent agreement
+      npa <- Hmisc::binconf(tab[4],  sum(tab[,2]))      # negative percent agreement
+  
+      o <- (opa[2] > target1)
+      n <- (npa[2] > target2)
+      p <- (ppa[2] > target3)
+      
+      output <- list(o,n,p)
+      
+      return(output)
+      
+    }
+    
+   
+    # execute
+    x <- NULL
+    x <- replicate(1999 , agree.pow() )   # increase simulations if you desire
+    
+    # output 
+    names <- c("overall percent agreement power", "negative percent agreement power",
+               "positive percent agreement power")
+    
+    for ( i in 1:3) {
+      print(names[i])
+      print( mean(unlist(x[i,])) )
+      }
+    
+    pow # recall canned power calculation
+   
+    
+         
+
+```
+
+```{r newpage, echo=FALSE, results='asis'}        
+
+      cat("\\clearpage\n\n")  
+
+```
+ 
+ 
+# CONCLUSION
+ 
+# REFERENCES
+ 
+# COMPUTING ENVIRONMENT
+ 
+```{r, echo=FALSE}
+options(width=70)
+opts_knit$set(root.dir = wd)   ##THIS SETS YOUR WORKING DIRECTORY
+sessionInfo()
+print(wd)
+```
+ 
+```{r echo=FALSE}
+ 
+stopTime<-proc.time()
+ 
+```
+ 
+This took `r (stopTime-startTime)[1][[1]]` seconds to execute.
+
+ 
